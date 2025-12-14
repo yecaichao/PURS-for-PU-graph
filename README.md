@@ -1,4 +1,7 @@
 # Python-based-polymer-unit-recognition-script-PURS-2.0
+<img width="1089" height="558" alt="image" src="https://github.com/user-attachments/assets/77131222-ff7c-46d7-b5d4-1488e8abb9c3" />
+
+
 1.High throughput identification of polymer-units(repeating units) from SMILES codes of polymers
 
 2.GNN models based on polymer-unit - Model acceleration and interpretative enhancement
