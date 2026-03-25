@@ -1,4 +1,3 @@
-# Python-based-polymer-unit-recognition-script-PURS-2.0
 <img width="1089" height="558" alt="image" src="https://github.com/user-attachments/assets/77131222-ff7c-46d7-b5d4-1488e8abb9c3" />
 
 
@@ -6,36 +5,49 @@
 
 2.GNN models based on polymer-unit - Model acceleration and interpretative enhancement
 
-## Installation
-#### 1.Use only the recognition function
-```
-conda create -n PURS
-conda activate PURS
-pip install -r requirements.yml
-```
+## PURS for PU-graph v1.1
 
-For a validated full-package environment and deployment steps, see `INSTALL.md`
-and `environment_purs.yml`.
+This release provides a cleaned and validated package for polymer-unit recognition and the associated PU-based learning workflows.
 
-#### Sample input
-`test.csv` is included in the package as a runnable example input file.
-It has been verified locally with the recognition workflow in `PURS.py`.
+### Included in this package
+- Core PURS recognition workflow
+- Sample input file: `test.csv`
+- Packaged `PU-gn-exp` workflow
+- Packaged `PU-MPNN` workflow
+- Installation guide: `INSTALL.md`
+- Reproducible environment file: `environment_purs.yml`
 
-#### Quick start
-Run the recognition workflow with:
-```bash
-python -c "import PURS; PURS.main('test.csv')"
-```
-#### 2.Interpretable GNNS based on polymer-units--PU-gn-exp
+### Main improvements
+- Fixed duplicate-name handling so repeated sample names no longer overwrite each other
+- Improved robustness of molecule embedding with fallback coordinate generation
+- Reduced repeated lookup overhead in several hot paths
+- Added packaged sample input and quick-start instructions
+- Vendored the minimal helper modules required by `PU-gn-exp`
+- Vendored the minimal utility code required by `PU-MPNN`
+- Added compatibility fixes for newer PyTorch and TensorFlow runtime stacks
+- Cleaned package-level documentation and user-facing workflow descriptions
 
-PU-gn-exp is included in this package with the minimal helper modules vendored locally.
-You do not need to clone the original `graph-network-explainability` repository just to run the packaged workflow.
-You still need its runtime dependencies such as `torchgraphs`, `tensorboardX`, `munch`, and `pyaml`.
+### Validation status
+The following checks were completed locally before packaging:
+- Core PURS recognition workflow successfully ran on `test.csv`
+- `PU-gn-exp` completed a minimal train/predict smoke run
+- `PU-MPNN` completed a minimal preprocessing/train smoke run
+- Packaged release directory was rebuilt and checked before generating the final zip
 
-#### 3.Prediction model based on polymer-unit--PU-MPNN
-PU-MPNN is included in this package with the required baseline utility code vendored locally.
-You do not need to clone the original `mol_mpnn` repository just to run the packaged workflow.
-You still need the runtime stack used by this branch, especially TensorFlow, RDKit, NumPy, scikit-learn, and sparse.
+### Installation
+Please follow:
+- `INSTALL.md`
+- `environment_purs.yml`
+
+### Release asset
+Recommended asset for download:
+- `PURS_for_PUgraph_v1.1.zip`
+
+### Notes
+- `PU-gn-exp` depends on `torchgraphs`, which is installed from GitHub through the provided environment file.
+- `PU-MPNN` requires TensorFlow, RDKit, NumPy, scikit-learn, and sparse, also covered by the provided environment file.
+- This package was validated in a Windows environment.
+
 
 ## When using PURS in your research PLEASE cite the paper:  
 [1] Xinyue Zhang, Ye Sheng, Xiumin Liu, Jiong Yang, William A. Goddard III, Caichao Ye*, Wenqing Zhang*. Polymer-unit Graph: Advancing Interpretability in Graph Neural Network Machine Learning for Organic Polymer Semiconductor Materials. J. Chem. Theory Comput., 2024, 20(7), 2908-2920.  
