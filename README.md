@@ -7,7 +7,7 @@
 
 ## PURS for PU-graph v1.1
 
-This release provides a cleaned and validated package for polymer-unit recognition and the associated PU-based learning workflows.
+This release provides a package for polymer-unit recognition and the associated PU-based learning workflows.
 
 ### Included in this package
 - Core PURS recognition workflow
@@ -27,26 +27,14 @@ This release provides a cleaned and validated package for polymer-unit recogniti
 - Added compatibility fixes for newer PyTorch and TensorFlow runtime stacks
 - Cleaned package-level documentation and user-facing workflow descriptions
 
-### Validation status
-The following checks were completed locally before packaging:
-- Core PURS recognition workflow successfully ran on `test.csv`
-- `PU-gn-exp` completed a minimal train/predict smoke run
-- `PU-MPNN` completed a minimal preprocessing/train smoke run
-- Packaged release directory was rebuilt and checked before generating the final zip
-
 ### Installation
 Please follow:
 - `INSTALL.md`
 - `environment_purs.yml`
 
-### Release asset
-Recommended asset for download:
-- `PURS_for_PUgraph_v1.1.zip`
-
 ### Notes
 - `PU-gn-exp` depends on `torchgraphs`, which is installed from GitHub through the provided environment file.
 - `PU-MPNN` requires TensorFlow, RDKit, NumPy, scikit-learn, and sparse, also covered by the provided environment file.
-- This package was validated in a Windows environment.
 
 
 ## When using PURS in your research PLEASE cite the paper:  
