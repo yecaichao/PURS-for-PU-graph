@@ -13,12 +13,29 @@ conda create -n PURS
 conda activate PURS
 pip install -r requirements.yml
 ```
+
+For a validated full-package environment and deployment steps, see `INSTALL.md`
+and `environment_purs.yml`.
+
+#### Sample input
+`test.csv` is included in the package as a runnable example input file.
+It has been verified locally with the recognition workflow in `PURS.py`.
+
+#### Quick start
+Run the recognition workflow with:
+```bash
+python -c "import PURS; PURS.main('test.csv')"
+```
 #### 2.Interpretable GNNS based on polymer-units--PU-gn-exp
 
-gn-exp is developed as the baseline model.Please follow the link "https://github.com/baldassarreFe/graph-network-explainability" to install gn-exp first and then refer to Readme in the PU-gn-exp folder.
+PU-gn-exp is included in this package with the minimal helper modules vendored locally.
+You do not need to clone the original `graph-network-explainability` repository just to run the packaged workflow.
+You still need its runtime dependencies such as `torchgraphs`, `tensorboardX`, `munch`, and `pyaml`.
 
 #### 3.Prediction model based on polymer-unit--PU-MPNN
-mol-MPNN is developed as the baseline model.Please follow the link "https://github.com/seokhokang/mol_mpnn" to install mol-MPNN first and then refer to Readme in the PU-MPNN folder.
+PU-MPNN is included in this package with the required baseline utility code vendored locally.
+You do not need to clone the original `mol_mpnn` repository just to run the packaged workflow.
+You still need the runtime stack used by this branch, especially TensorFlow, RDKit, NumPy, scikit-learn, and sparse.
 
 ## When using PURS in your research PLEASE cite the paper:  
 [1] Xinyue Zhang, Ye Sheng, Xiumin Liu, Jiong Yang, William A. Goddard III, Caichao Ye*, Wenqing Zhang*. Polymer-unit Graph: Advancing Interpretability in Graph Neural Network Machine Learning for Organic Polymer Semiconductor Materials. J. Chem. Theory Comput., 2024, 20(7), 2908-2920.  

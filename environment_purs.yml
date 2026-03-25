@@ -1,0 +1,25 @@
+name: purs-review-py39
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pandas=1.4.4
+  - scikit-learn=1.0.2
+  - ipython=7.31.1
+  - pillow
+  - tqdm
+  - sparse=0.14.0
+  - cairosvg=2.7.0
+  - rdkit=2022.09.5
+  - pytorch=2.3.1
+  - cpuonly
+  - pyyaml
+  - pip
+  - pip:
+      - tensorflow-cpu==2.15.1
+      - tensorboardX==2.6.4
+      - munch==4.0.0
+      - pyaml==26.2.1
+      - git+https://github.com/baldassarreFe/torchgraphs.git

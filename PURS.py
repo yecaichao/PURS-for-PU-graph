@@ -38,16 +38,41 @@ from rdkit.Chem import rdRGroupDecomposition as rdRGD
 
 def process_smiles(file_name):
     
-    file=open(file_name)
-    fileReader=csv.reader(file)
-    filedata=list(fileReader)
-
     smi_list=[]
-    name_list0=[]#重名未做处理的名称列表
-    name_list=[]#做了重名处理的名称列表
+    name_list0=[]
+    name_list=[]
     mol_list = []
     num_list = []
-    for i in filedata:
+    name_counts = Counter()
+    with open(file_name, newline='', encoding='utf-8-sig') as file:
+        fileReader=csv.reader(file)
+        for i in fileReader:
+            if '/'in i[1]:
+                i[1]=i[1].replace('/','')
+            if '\\'in i[1]:
+                i[1]=i[1].replace('\\','')
+            mol=Chem.MolFromSmiles(i[1])
+            if mol:
+                smi=Chem.MolToSmiles(mol)
+                num = mol.GetNumAtoms()
+                num_list.append(num)
+                smi_list.append(smi)
+                if AllChem.EmbedMolecule(mol, randomSeed=0xF00D) != 0:
+                    AllChem.Compute2DCoords(mol)
+                mol_list.append(mol)
+                duplicate_id = name_counts[i[0]]
+                if duplicate_id:
+                    name = i[0]+'-'+str(duplicate_id)
+                    name_list.append(name)
+                else:
+                    name_list.append(i[0])
+                name_counts[i[0]] += 1
+                name_list0.append(i[0])
+    return smi_list,name_list0,name_list,mol_list,num_list
+    """
+    name_list0=[]#重名未做处理的名称列表
+    name_list=[]#做了重名处理的名称列表
+    
         #Rdkit识别不出顺反，要把'/'与'\'去掉
         if '/'in i[1]:
             i[1]=i[1].replace('/','')
@@ -74,6 +99,8 @@ def process_smiles(file_name):
             
     return smi_list,name_list0,name_list,mol_list,num_list
 
+
+    """
 
 # In[3]:
 
@@ -1065,8 +1092,6 @@ def get_pair_atom(total_neighbor_data,total_inner_dist):
 
 def get_adj(ring_total_list,total_neighbor_data,name_list):
     ###生成连接矩阵(矩阵维度根据原子数)
-    ring_series=pd.Series(ring_total_list)
-
     matrix_list=[]
     for idx,i in enumerate(name_list):
         name = name_list[idx]
@@ -1077,16 +1102,17 @@ def get_adj(ring_total_list,total_neighbor_data,name_list):
         self_list = []
         for k,v in data.items():
             self_list.append(k)
+        node_to_index = {node_name: node_idx for node_idx, node_name in enumerate(self_list)}
         j = 0
         while j < len(self_list):
             k = self_list[j]
             data2 = data[k]
             for k,v in data2['right_neighbor'].items():
-                index = self_list.index(k)
+                index = node_to_index[k]
                 matrix[j,index] = 1
                 matrix[index,j] = 1
             for k,v in data2['left_neighbor'].items():
-                index = self_list.index(k)
+                index = node_to_index[k]
                 matrix[j,index] = 1
                 matrix[index,j] = 1
             j=j+1
@@ -1097,30 +1123,32 @@ def get_adj(ring_total_list,total_neighbor_data,name_list):
 
 
 def get_pu_index(total_neighbor_data,ring_total_list,name_list):
+    ring_index = {ring: idx for idx, ring in enumerate(ring_total_list)}
     #每个数据的每个基元在基元列表中的索引编号
     pu_index={}
     for key,value in total_neighbor_data.items():
         index={}
         pu_index[key] = index 
         for k,v in value.items():
-            locat = ring_total_list.index(v['self'])
+            locat = ring_index[v['self']]
             index[k]=locat
             
     pu_index2 = {}
     for key,values in pu_index.items():
-        if key in name_list2:
+        if key in name_list:
             pu_index2[key]=values
             
     return pu_index2
 
 
 def get_node_index(total_neighbor_data,ring_total_list):
+    ring_index = {ring: idx for idx, ring in enumerate(ring_total_list)}
     node_index=[]
     node_num_list=[]
     for key,value in total_neighbor_data.items():
         index=[] 
         for k,v in value.items():
-            locat = ring_total_list.index(v['self'])
+            locat = ring_index[v['self']]
             index.append(locat)
         node_index.append(index)
         node_num_list.append(len(index))
@@ -1129,12 +1157,13 @@ def get_node_index(total_neighbor_data,ring_total_list):
 
 
 def get_pu_dict(total_neighbor_data,ring_total_list):
+    ring_index = {ring: idx for idx, ring in enumerate(ring_total_list)}
     pu_index={}
     for key,value in total_neighbor_data.items():
         index={}
         pu_index[key] = index 
         for k,v in value.items():
-            locat = ring_total_list.index(v['self'])
+            locat = ring_index[v['self']]
             index[k]=locat
     return pu_index
 
@@ -1267,7 +1296,9 @@ def make_con(index_data,index_cp):
 #生成polymer-unit的MACCS
 def get_MACCS(ring_total_list,N):
     MACCS_dict={}
-    index=torch.LongTensor(random.sample(range(167), N))
+    index = None
+    if N is not False:
+        index=torch.LongTensor(random.Random(0).sample(range(167), N))
     for idx,i in enumerate(ring_total_list):
         molecule = Chem.MolFromSmiles(i)
         if not molecule:
@@ -1305,7 +1336,58 @@ def get_node_feature(name_list,MACCS_dict,pu_index,node_num_list):
     return node_feature_dist
 
 #生成每个单体的边特征值
-def get_edge_feature(smi_list,name_list,matrix_list,pu_index,pair_atom_dist,total_inner_dist):
+def get_edge_feature(mol_list,name_list,matrix_list,pu_index,pair_atom_dist,total_inner_dist):
+    total_edge_list=[]
+    edge_num_list = []
+    for i, mol in enumerate(mol_list):
+        if not mol:
+            print("Skipping invalid molecule while building edge features for:", name_list[i])
+            continue
+        if mol.GetNumConformers() == 0:
+            if AllChem.EmbedMolecule(mol, randomSeed=0xF00D) != 0:
+                AllChem.Compute2DCoords(mol)
+        pos = mol.GetConformer().GetPositions()
+        name = name_list[i]
+        num_index = list(pu_index[name].values())
+        num_node = len(num_index)
+        node_name = list(pu_index[name].keys())
+        pair_atom = pair_atom_dist[name]
+        if '.' in Chem.MolToSmiles(mol):
+            continue
+        rings = mol.GetRingInfo().AtomRings()
+        adj = matrix_list[i]
+        pair_lookup = {}
+        for pair_idx, pair_name in enumerate(pair_atom['pair_index']):
+            pair_lookup[tuple(pair_name)] = pair_atom['pair_atom'][pair_idx]
+
+        edge_list = []
+        for j in range(num_node):
+            for k in range(num_node):
+                if adj[j,k]==1:
+                    j_name=node_name[j]
+                    k_name=node_name[k]
+                    j_index=num_index[j]
+                    k_index=num_index[k]
+                    pair = pair_lookup.get((j_name, k_name))
+                    if pair is None:
+                        pair = pair_lookup.get((k_name, j_name))
+                    if pair is not None:
+                        edge = np.zeros([8])
+                        edge[:6] = bondFeatures2(pos,pair[0],pair[1], mol, rings)
+                        edge[6] = j_index*0.01
+                        edge[7] = k_index*0.01
+                        edge_list.append(edge.tolist())
+                        edge_list.append(edge.tolist())
+                    else:
+                        edge = np.zeros([8])
+                        edge_list.append(edge.tolist())
+                        edge_list.append(edge.tolist())
+        edge = torch.tensor(edge_list,dtype=torch.float)
+        total_edge_list.append(edge)
+        edge_num_list.append(len(edge_list))
+    return total_edge_list, edge_num_list
+    """
+
     dim_edge = 8
     writer = Chem.SDWriter('polymer.sdf')
 
@@ -1379,6 +1461,8 @@ def get_edge_feature(smi_list,name_list,matrix_list,pu_index,pair_atom_dist,tota
         edge_num_list.append(len(edge_list))
     return total_edge_list, edge_num_list
 
+    """
+
 def edge_index(matrix_list):
     
     senders_list=[]
@@ -1403,8 +1487,7 @@ def add_bratch_to_list(v,bratch_list):
         if num > 3:
             bratch_list.append(v)                    
     else:
-        print("not mol")
-        print(v)
+        print("Invalid branch fragment:", v)
         
 def hight_atom(mol,highlight_atoms):
     for atom in mol.GetAtoms():
@@ -1472,7 +1555,7 @@ def get_bratch_dist(smi_list,name_list):
                 if num > 1:
                     bratch_list.append(v)
             else:
-                print("mol error")
+                print("Invalid branch molecule")
                 
         bratch_list = list(set(bratch_list)) 
         atomids_set = []
@@ -1500,8 +1583,7 @@ def get_bratch_dist(smi_list,name_list):
                         atomids_set.append(j)
                         br_dist['inner'].append(list(j))
             else:
-                print("No branch chain matches")
-                print(i)
+                print("No branch chain match found for fragment:", i)
             bratch_dist[idx]=br_dist
         delete_inner_list = []
         for i in atomids_set:
@@ -1720,7 +1802,7 @@ def get_cp_data(cp_list0,smallest_r0,str_df0,independent_cp):
 def check_result(name_list,total_neighbor_data,total_inner_dist):
     #用于检查是否有
     for idx,i in enumerate(name_list):
-        print(i)
+        print("Checking polymer:", i)
         smiles = smi_list[idx]
         mol = Chem.MolFromSmiles(smiles)
         fig = Draw.MolToImage(mol, size=(500,500), kekulize=True)
@@ -1734,7 +1816,7 @@ def check_result(name_list,total_neighbor_data,total_inner_dist):
         inner_dist = total_inner_dist[i]
         for k,v in inner_dist.items():
             hight_atom(mol,v)
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        print("Finished branch-structure check")
         
 def hight_atom(mol,highlight_atoms):
     for atom in mol.GetAtoms():
@@ -1847,7 +1929,7 @@ def get_bratch_dist2(smi_list,name_list):
                         atomids_set.append(j)
                         br_dist['inner'].append(list(j))
             else:
-                print("No branch chain matches")
+                print("No branch chain match found")
                 #print(i)
                 #display(br_m)
                 #fig = Draw.MolToImage(m, size=(1000,1000), kekulize=True)
@@ -1926,9 +2008,7 @@ def update_bratch0(name_list,smi_list,total_neighbor_data,total_inner_dist,total
         try:
             inner_array = list_to_array(inner_list)
         except ValueError:
-            print("name")
-            print(name)
-            print("inner_list")
+            print("Failed to convert inner_list to array for polymer:", name)
             print(inner_list)
             continue
         #删除基元中的支链部分
@@ -2013,9 +2093,7 @@ def update_bratch(name_list,smi_list,total_neighbor_data,total_inner_dist,total_
         try:
             inner_array = list_to_array(inner_list)
         except ValueError:
-            print("name")
-            print(name)
-            print("inner_list")
+            print("Failed to convert inner_list to array for polymer:", name)
             print(inner_list)
             continue
         #删除基元中的支链部分
@@ -2062,8 +2140,7 @@ def update_bratch(name_list,smi_list,total_neighbor_data,total_inner_dist,total_
                                 fragsmi = Chem.MolToSmiles(fragmol)
                                 neighbor_data[k]['self']=fragsmi
                             else:
-                                print('2')
-                                print(smi)
+                                print("Failed to repair fragment with aromatic nitrogen in:", smi)
                     else:
                         neighbor_data[k]['self']=fragsmi
                        
@@ -2206,7 +2283,7 @@ def get_new_neighbor_data(total_neighbor_data,total_inner_dist,name_list,smi_lis
                                     smi = Chem.MolToSmiles(m)
                                     replace[new_key]=smi
                     else:
-                        print("no flag")
+                        print("Substructure matching failed during PU split")
                         new_inner[k]=inner
             
             if len(replace)> 1:
@@ -2312,29 +2389,29 @@ def get_new_neighbor_data(total_neighbor_data,total_inner_dist,name_list,smi_lis
 
 
 def main(file_name):
-    print("将csv文件里面的内容整理成列表...")
+    print("Loading csv records...")
     smi_list,name_list0,name_list,mol_list,num_list=process_smiles(file_name)
-    print("将SMILES码里面的基元识别整理出来...")
+    print("Recognizing polymer units from SMILES...")
     ring_total_list0,total_neighbor_data0,total_inner_dist0,total_end_atom_pair=get_pu(smi_list,name_list)
-    print("处理支链性质...")
+    print("Analyzing branch information...")
     total_bratch_dist = get_bratch_dist2(smi_list,name_list)
-    print("将支链信息与碳链骨架信息合并...")
+    print("Merging branch and backbone information...")
     total_neighbor_data,total_inner_dist,ring_total_list = update_bratch(name_list,smi_list,total_neighbor_data0,total_inner_dist0,total_bratch_dist)
     total_neighbor_data2,total_inner_dist2,ring_total_list2 = get_new_neighbor_data(total_neighbor_data,total_inner_dist,name_list,smi_list)
-    print("生成连接矩阵")
+    print("Building adjacency matrices...")
     matrix_list=get_adj(ring_total_list2,total_neighbor_data2,name_list)
-    print("每个节点对应的pu种类")
+    print("Assigning polymer-unit types to nodes...")
     pu_index = get_pu_dict(total_neighbor_data2,ring_total_list2)
-    print("节点之间连接原子的索引")
+    print("Finding linked atom indices between nodes...")
     pair_atom_dist = get_pair_atom(total_neighbor_data2,total_inner_dist2)
-    print("生成每个polymer-unit的MACCS码")
+    print("Generating MACCS fingerprints for polymer units...")
     MACCS_dict = get_MACCS(ring_total_list2,False)
-    print("生成边索引，边个数列表")
+    print("Generating edge index lists...")
     senders_list,receivers_list,edge_num_list = edge_index(matrix_list)
-    print("生成节点索引，节点个数列表")
+    print("Generating node index lists...")
     node_index, node_num_list = get_node_index(total_neighbor_data2,ring_total_list2)
-    print("生成边特征值")
-    edge_list = get_edge_feature(node_num_list,mol_list,name_list,matrix_list,pu_index,pair_atom_dist,total_inner_dist)
+    print("Generating edge features...")
+    edge_list = get_edge_feature(mol_list,name_list,matrix_list,pu_index,pair_atom_dist,total_inner_dist2)
 
 
 # In[ ]:
